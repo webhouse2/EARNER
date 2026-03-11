@@ -45,7 +45,13 @@ const RSS_FEEDS = [
   "https://www.entrepreneur.com/rss/starting-a-business.rss",
   "https://techcrunch.com/category/artificial-intelligence/feed/",
   "https://problogger.com/feed/",
-  "https://www.smartpassiveincome.com/feed/"
+  "https://www.smartpassiveincome.com/feed/",
+  "https://make-money-online.com/feed/",
+  "https://www.sidehustlenation.com/feed/",
+  "https://financialpost.com/category/personal-finance/feed/",
+  "https://www.forbes.com/entrepreneurs/feed/",
+  "https://feeds.feedburner.com/NichePursuits",
+  "https://www.authorityhacker.com/feed/"
 ];
 
 async function updateBlogFromRSS() {
@@ -56,10 +62,10 @@ async function updateBlogFromRSS() {
       console.log(`Fetching feed: ${url}`);
       const feed = await parser.parseURL(url);
       console.log(`Found ${feed.items.length} items in ${url}`);
-      for (const item of feed.items.slice(0, 3)) {
+      // Fetch up to 5 items per feed to ensure freshness
+      for (const item of feed.items.slice(0, 5)) {
         const existing = db.prepare("SELECT id FROM posts WHERE source_url = ?").get(item.link);
         if (existing) {
-          console.log(`Item already exists: ${item.link}`);
           continue;
         }
 
@@ -67,8 +73,8 @@ async function updateBlogFromRSS() {
         
         // Use Gemini to generate a full post based on the RSS item
         const prompt = `
-          You are an expert content creator for "Earners Hub", a blog about making money online, AI tools, and freelancing.
-          Based on the following news item, write a high-quality blog post.
+          You are an expert content creator for "Earners Hub", a professional digital magazine about making money online, AI tools, and freelancing.
+          Based on the following news item, write a high-quality, SEO-optimized blog post.
           
           Title: ${item.title}
           Summary: ${item.contentSnippet || item.content || ""}
@@ -76,12 +82,13 @@ async function updateBlogFromRSS() {
           
           Requirements:
           1. The writer's name MUST be BABATUNDE.
-          2. The post MUST have 2 to 5 paragraphs.
-          3. The tone should be professional, encouraging, and actionable.
+          2. The post MUST have 3 to 6 detailed paragraphs.
+          3. The tone should be professional, authoritative, and highly actionable.
           4. Assign it to one of these categories: 'Make Money Online', 'AI Tools for Income', 'Freelancing', 'Affiliate Marketing', 'Blogging & SEO', 'Online Business Ideas', 'Passive Income'.
-          5. Generate a catchy title and a short excerpt.
-          6. Estimate a read time (e.g., "5 min read").
+          5. Generate a catchy, click-worthy title and a compelling short excerpt.
+          6. Estimate a realistic read time (e.g., "7 min read").
           7. The response MUST be in JSON format.
+          8. Use HTML tags like <h3> and <p> for the content.
         `;
 
         try {
@@ -105,7 +112,7 @@ async function updateBlogFromRSS() {
           });
 
           const data = JSON.parse(response.text);
-          const id = item.title?.toLowerCase().replace(/[^a-z0-9]/g, "-") || Math.random().toString(36).substring(7);
+          const id = item.title?.toLowerCase().replace(/[^a-z0-9]/g, "-").substring(0, 50) + "-" + Math.random().toString(36).substring(2, 7);
           const image = `https://picsum.photos/seed/${id}/1200/800`;
 
           db.prepare(`
@@ -118,7 +125,7 @@ async function updateBlogFromRSS() {
             id, data.title, data.excerpt, data.content, data.category,
             "BABATUNDE", "Senior Editor", "https://i.pravatar.cc/150?u=babatunde", "Expert in digital entrepreneurship and online income strategies.",
             new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
-            data.readTime, image, 0, 0, item.link
+            data.readTime, image, Math.random() > 0.7 ? 1 : 0, Math.random() > 0.7 ? 1 : 0, item.link
           );
           
           console.log(`Successfully added post: ${data.title}`);
@@ -130,6 +137,25 @@ async function updateBlogFromRSS() {
     } catch (error) {
       console.error(`Error processing feed ${url}:`, error);
     }
+  }
+  
+  // Cleanup: Keep only the latest 100 posts to ensure freshness and performance
+  try {
+    const totalCount = db.prepare("SELECT COUNT(*) as count FROM posts").get() as { count: number };
+    if (totalCount.count > 100) {
+      console.log(`Cleaning up old posts. Total count: ${totalCount.count}`);
+      db.prepare(`
+        DELETE FROM posts 
+        WHERE id NOT IN (
+          SELECT id FROM posts 
+          ORDER BY created_at DESC 
+          LIMIT 100
+        )
+      `).run();
+      console.log("Cleanup finished.");
+    }
+  } catch (cleanupError) {
+    console.error("Error during cleanup:", cleanupError);
   }
   
   if (addedCount === 0) {

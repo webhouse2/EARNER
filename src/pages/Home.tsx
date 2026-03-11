@@ -6,7 +6,7 @@ import { BlogCard, Sidebar, TrendingMarquee } from '../components/BlogComponents
 import { Link } from 'react-router-dom';
 
 export const Home = () => {
-  const { posts, loading } = usePosts();
+  const { posts, loading, updating } = usePosts();
   
   if (loading) {
     return (
@@ -41,7 +41,13 @@ export const Home = () => {
   const marqueePosts = trendingPosts.length > 0 ? trendingPosts : posts.slice(0, 5);
 
   return (
-    <div className="space-y-0 pb-20">
+    <div className="space-y-0 pb-20 relative">
+      {updating && (
+        <div className="fixed top-20 right-8 z-[60] bg-brand-accent text-white px-4 py-2 rounded-full shadow-lg flex items-center gap-2 animate-bounce">
+          <div className="h-3 w-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+          <span className="text-xs font-bold uppercase tracking-widest">Updating Feeds...</span>
+        </div>
+      )}
       <TrendingMarquee posts={marqueePosts} />
       
       <div className="space-y-20">

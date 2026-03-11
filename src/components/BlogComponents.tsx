@@ -133,7 +133,11 @@ export const BlogCard = ({ post, variant = 'default' }: BlogCardProps) => {
   );
 };
 
+import { usePosts } from '../context/PostContext';
+
 export const Sidebar = ({ trendingPosts, popularPosts }: { trendingPosts: Post[], popularPosts: Post[] }) => {
+  const { triggerUpdate, updating } = usePosts();
+  
   return (
     <aside className="space-y-12">
       {/* Search Widget */}
@@ -176,25 +180,32 @@ export const Sidebar = ({ trendingPosts, popularPosts }: { trendingPosts: Post[]
         </div>
       </div>
 
-      {/* Admin Actions (Optional/Default) */}
+      {/* Admin Actions */}
       <div className="bg-slate-900 p-6 rounded-2xl text-white">
         <h4 className="text-xs font-bold uppercase tracking-widest text-slate-400 mb-4">Feed Management</h4>
         <button 
-          onClick={async () => {
-            const btn = document.getElementById('refresh-btn');
-            if (btn) btn.innerText = 'Updating...';
-            try {
-              await fetch('/api/update-feeds', { method: 'POST' });
-              window.location.reload();
-            } catch (e) {
-              if (btn) btn.innerText = 'Update Failed';
-            }
-          }}
-          id="refresh-btn"
-          className="w-full bg-brand-accent text-white py-2 rounded-lg font-bold text-xs hover:bg-blue-600 transition-colors"
+          onClick={() => triggerUpdate()}
+          disabled={updating}
+          className={cn(
+            "w-full py-2 rounded-lg font-bold text-xs transition-all flex items-center justify-center gap-2",
+            updating ? "bg-slate-700 text-slate-400 cursor-not-allowed" : "bg-brand-accent text-white hover:bg-blue-600"
+          )}
         >
-          Refresh RSS Feeds
+          {updating ? (
+            <>
+              <div className="h-3 w-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              Updating...
+            </>
+          ) : (
+            <>
+              <Zap className="h-3 w-3 fill-current" />
+              Refresh RSS Feeds
+            </>
+          )}
         </button>
+        <p className="text-[10px] text-slate-500 mt-3 text-center italic">
+          Fetching latest online income opportunities...
+        </p>
       </div>
 
       {/* Popular Posts */}

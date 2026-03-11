@@ -4,8 +4,10 @@ import { Post } from '../types';
 interface PostContextType {
   posts: Post[];
   loading: boolean;
+  updating: boolean;
   error: string | null;
   refreshPosts: () => Promise<void>;
+  triggerUpdate: () => Promise<void>;
 }
 
 const PostContext = createContext<PostContextType | undefined>(undefined);
@@ -13,6 +15,7 @@ const PostContext = createContext<PostContextType | undefined>(undefined);
 export const PostProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
+  const [updating, setUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchPosts = async () => {
@@ -30,6 +33,19 @@ export const PostProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const triggerUpdate = async () => {
+    try {
+      setUpdating(true);
+      const response = await fetch('/api/update-feeds', { method: 'POST' });
+      if (!response.ok) throw new Error('Failed to update feeds');
+      await fetchPosts();
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setUpdating(false);
+    }
+  };
+
   useEffect(() => {
     fetchPosts();
   }, []);
@@ -39,7 +55,7 @@ export const PostProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <PostContext.Provider value={{ posts, loading, error, refreshPosts }}>
+    <PostContext.Provider value={{ posts, loading, updating, error, refreshPosts, triggerUpdate }}>
       {children}
     </PostContext.Provider>
   );
