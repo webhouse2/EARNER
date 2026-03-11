@@ -1,0 +1,44 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Playfair Display", serif;
+  
+  --color-brand-primary: #1e40af; /* blue-800 */
+  --color-brand-secondary: #1e293b; /* slate-800 */
+  --color-brand-accent: #3b82f6; /* blue-500 */
+  
+  --animate-marquee: marquee 30s linear infinite;
+  
+  @keyframes marquee {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
+}
+
+@layer base {
+  body {
+    @apply bg-white text-slate-900 font-sans antialiased;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-serif font-bold tracking-tight;
+  }
+}
+
+.markdown-body h2 {
+  @apply text-3xl mt-12 mb-6 border-b border-slate-100 pb-2;
+}
+
+.markdown-body p {
+  @apply text-lg leading-relaxed mb-6 text-slate-700;
+}
+
+.markdown-body ul {
+  @apply list-disc list-inside mb-6 space-y-2 text-slate-700;
+}
+
+.glass-nav {
+  @apply bg-white/80 backdrop-blur-md border-b border-slate-100 sticky top-0 z-50;
+}
