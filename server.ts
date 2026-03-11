@@ -6,12 +6,14 @@ import Database from "better-sqlite3";
 import path from "path";
 import { fileURLToPath } from "url";
 import fs from "fs";
-import { ALL_POSTS } from "./src/data/posts.js"; // Use .js for ESM compatibility in some environments or just let tsx handle it
+import { ALL_POSTS } from "./src/data/posts.ts";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const db = new Database("blog.db");
+const dbPath = path.join(process.cwd(), "blog.db");
+console.log(`Using database at: ${dbPath}`);
+const db = new Database(dbPath);
 const parser = new Parser();
 const apiKey = process.env.GEMINI_API_KEY || process.env.API_KEY;
 if (!apiKey) {
@@ -189,20 +191,25 @@ async function startServer() {
 
   // API Routes
   app.get("/api/posts", (req, res) => {
-    const posts = db.prepare("SELECT * FROM posts ORDER BY created_at DESC").all();
-    // Map DB fields to Post interface
-    const formattedPosts = posts.map(p => ({
-      ...p,
-      author: {
-        name: p.author_name,
-        role: p.author_role,
-        avatar: p.author_avatar,
-        bio: p.author_bio
-      },
-      trending: !!p.trending,
-      popular: !!p.popular
-    }));
-    res.json(formattedPosts);
+    try {
+      const posts = db.prepare("SELECT * FROM posts ORDER BY created_at DESC").all();
+      // Map DB fields to Post interface
+      const formattedPosts = posts.map(p => ({
+        ...p,
+        author: {
+          name: p.author_name,
+          role: p.author_role,
+          avatar: p.author_avatar,
+          bio: p.author_bio
+        },
+        trending: !!p.trending,
+        popular: !!p.popular
+      }));
+      res.json(formattedPosts);
+    } catch (error) {
+      console.error("API Error fetching posts:", error);
+      res.status(500).json({ error: (error as Error).message });
+    }
   });
 
   app.post("/api/update-feeds", async (req, res) => {
@@ -216,24 +223,34 @@ async function startServer() {
 
   // Seed initial data if empty
   const count = db.prepare("SELECT COUNT(*) as count FROM posts").get() as { count: number };
+  console.log(`Current post count in DB: ${count.count}`);
   if (count.count === 0) {
     console.log("Seeding initial posts from data/posts.ts...");
-    for (const post of ALL_POSTS) {
-      db.prepare(`
-        INSERT INTO posts (
-          id, title, excerpt, content, category, 
-          author_name, author_role, author_avatar, author_bio,
-          date, readTime, image, trending, popular, source_url
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `).run(
-        post.id, post.title, post.excerpt, post.content, post.category,
-        post.author.name, post.author.role, post.author.avatar, post.author.bio,
-        post.date, post.readTime, post.image, post.trending ? 1 : 0, post.popular ? 1 : 0, `internal://${post.id}`
-      );
+    try {
+      if (!ALL_POSTS || ALL_POSTS.length === 0) {
+        console.warn("ALL_POSTS is empty or undefined. Seeding skipped.");
+      } else {
+        for (const post of ALL_POSTS) {
+          db.prepare(`
+            INSERT INTO posts (
+              id, title, excerpt, content, category, 
+              author_name, author_role, author_avatar, author_bio,
+              date, readTime, image, trending, popular, source_url
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `).run(
+            post.id, post.title, post.excerpt, post.content, post.category,
+            post.author.name, post.author.role, post.author.avatar, post.author.bio,
+            post.date, post.readTime, post.image, post.trending ? 1 : 0, post.popular ? 1 : 0, `internal://${post.id}`
+          );
+        }
+        console.log(`Successfully seeded ${ALL_POSTS.length} posts.`);
+      }
+    } catch (seedError) {
+      console.error("Seeding failed:", seedError);
     }
     
     console.log("Triggering initial RSS update...");
-    updateBlogFromRSS().catch(err => console.error("Initial seeding failed:", err));
+    updateBlogFromRSS().catch(err => console.error("Initial RSS update failed:", err));
   }
 
   // Vite middleware for development

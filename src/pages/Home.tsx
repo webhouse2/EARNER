@@ -6,12 +6,31 @@ import { BlogCard, Sidebar, TrendingMarquee } from '../components/BlogComponents
 import { Link } from 'react-router-dom';
 
 export const Home = () => {
-  const { posts, loading, updating } = usePosts();
+  const { posts, loading, updating, error } = usePosts();
   
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-brand-accent"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-8 text-center">
+        <div className="bg-red-50 p-8 rounded-3xl border border-red-100 max-w-md">
+          <h2 className="text-3xl font-bold text-red-600 mb-4">Connection Error</h2>
+          <p className="text-slate-600 mb-8">
+            We're having trouble connecting to the Earners Hub server. Please check your connection and try again.
+          </p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="px-8 py-3 bg-red-600 text-white rounded-xl font-bold hover:bg-red-700 transition-all"
+          >
+            Retry Connection
+          </button>
+        </div>
       </div>
     );
   }
